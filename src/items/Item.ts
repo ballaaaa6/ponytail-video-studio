@@ -18,13 +18,16 @@ export default class Item extends Phaser.Physics.Arcade.Sprite {
   setDialogBox(text: string) {
     const innerText = this.scene.add
       .text(0, 0, text)
-      .setFontFamily('Arial')
-      .setFontSize(12)
+      .setFontFamily('Tahoma, Arial, sans-serif')
+      .setFontSize(24)
       .setColor('#000000')
+      .setScale(0.5)
 
     // set dialogBox slightly larger than the text in it
-    const dialogBoxWidth = innerText.width + 4
-    const dialogBoxHeight = innerText.height + 2
+    const innerTextWidth = innerText.width * 0.5
+    const innerTextHeight = innerText.height * 0.5
+    const dialogBoxWidth = innerTextWidth + 4
+    const dialogBoxHeight = innerTextHeight + 2
     const dialogBoxX = this.x - dialogBoxWidth * 0.5
     const dialogBoxY = this.y + this.height * 0.5
 
@@ -48,13 +51,14 @@ export default class Item extends Phaser.Physics.Arcade.Sprite {
   setStatusBox(text: string) {
     const innerText = this.scene.add
       .text(0, 0, text)
-      .setFontFamily('Arial')
-      .setFontSize(12)
+      .setFontFamily('Tahoma, Arial, sans-serif')
+      .setFontSize(24)
       .setColor('#000000')
+      .setScale(0.5)
 
     // set dialogBox slightly larger than the text in it
-    const statusBoxWidth = innerText.width + 4
-    const statusBoxHeight = innerText.height + 2
+    const statusBoxWidth = (innerText.width * 0.5) + 4
+    const statusBoxHeight = (innerText.height * 0.5) + 2
     const statusBoxX = this.x - statusBoxWidth * 0.5
     const statusBoxY = this.y - this.height * 0.25
     this.statusBox.add(
