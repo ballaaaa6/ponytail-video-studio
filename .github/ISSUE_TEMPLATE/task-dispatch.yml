@@ -1,0 +1,33 @@
+name: 📋 สั่งงาน AI / แจ้งบั๊ก
+description: แบบฟอร์มในการสั่งงานหัวหน้าพนักงาน AI แต่ละคนให้ทำภารกิจหรือแก้ไขโค้ด
+title: "[TASK]: "
+labels: ["task", "ai-execution"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ขอบคุณสำหรับการมอบหมายงาน! กรุณากรอกรายละเอียดด้านล่างเพื่อให้ AI รับคำสั่งไปรันงานต่อได้อย่างถูกต้องและมีประสิทธิภาพ
+  - type: textarea
+    id: description
+    attributes:
+      label: 📝 รายละเอียดภารกิจ (Task Description)
+      placeholder: อธิบายว่าต้องการให้ AI ทำอะไร...
+    validations:
+      required: true
+  - type: dropdown
+    id: assignee
+    attributes:
+      label: 👨‍💼 มอบหมายงานให้พนักงานคนไหน (Assignee)
+      options:
+        - "Agent Somsak (Producer)"
+        - "Agent Somri (Prompt Artist)"
+        - "ทุกแแผนก (System-wide)"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 🎯 เกณฑ์การตรวจรับงาน (Acceptance Criteria)
+      placeholder: - ทำสิ่งนี้สำเร็จ... \n- รันสิ่งนี้ผ่าน...
+    validations:
+      required: true
