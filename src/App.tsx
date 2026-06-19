@@ -1,22 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Play, 
   Terminal as TermIcon, 
-  User, 
   Send, 
   Video, 
-  Settings, 
-  Cpu, 
   MessageSquare, 
-  Bot, 
   Activity, 
   Sparkles,
   Layers,
-  ArrowRight,
   RefreshCw,
-  Eye,
-  CheckCircle,
-  AlertTriangle
+  CheckCircle
 } from 'lucide-react';
 
 // Types
