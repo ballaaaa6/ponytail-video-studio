@@ -223,7 +223,12 @@ export default class Game extends Phaser.Scene {
 
   // function to add new player to the otherPlayer group
   private handlePlayerJoined(newPlayer: IPlayer, id: string) {
-    const otherPlayer = this.add.otherPlayer(newPlayer.x, newPlayer.y, 'adam', id, newPlayer.name)
+    let texture = 'adam'
+    if (newPlayer.anim.startsWith('lucy')) texture = 'lucy'
+    else if (newPlayer.anim.startsWith('ash')) texture = 'ash'
+    else if (newPlayer.anim.startsWith('nancy')) texture = 'nancy'
+
+    const otherPlayer = this.add.otherPlayer(newPlayer.x, newPlayer.y, texture, id, newPlayer.name)
     this.otherPlayers.add(otherPlayer)
     this.otherPlayerMap.set(id, otherPlayer)
   }

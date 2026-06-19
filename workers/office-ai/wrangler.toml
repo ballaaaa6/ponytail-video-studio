@@ -1,0 +1,6 @@
+name = "voice-office-ai"
+main = "src/index.ts"
+compatibility_date = "2026-06-19"
+
+[ai]
+binding = "AI"
