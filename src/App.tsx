@@ -40,12 +40,9 @@ function App() {
         </>
       )
     }
-  } else if (roomJoined) {
-    /* Render LoginDialog if not logged in but selected a room. */
-    ui = <LoginDialog />
   } else {
-    /* Render RoomSelectionDialog if yet selected a room. */
-    ui = <RoomSelectionDialog />
+    /* Render LoginDialog directly to skip room selection screen. */
+    ui = <LoginDialog />
   }
 
   return (

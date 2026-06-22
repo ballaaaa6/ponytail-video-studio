@@ -140,7 +140,7 @@ for (let i = avatars.length - 1; i > 0; i--) {
 }
 
 export default function LoginDialog() {
-  const [name, setName] = useState<string>('')
+  const [name, setName] = useState<string>('Boss')
   const [avatarIndex, setAvatarIndex] = useState<number>(0)
   const [nameFieldEmpty, setNameFieldEmpty] = useState<boolean>(false)
   const dispatch = useAppDispatch()
@@ -149,6 +149,17 @@ export default function LoginDialog() {
   const roomName = useAppSelector((state) => state.room.roomName)
   const roomDescription = useAppSelector((state) => state.room.roomDescription)
   const game = phaserGame.scene.keys.game as Game
+
+  React.useEffect(() => {
+    if (roomJoined && game && game.myPlayer) {
+      console.log('Auto-joining room with default user Boss')
+      game.registerKeys()
+      game.myPlayer.setPlayerName('Boss')
+      game.myPlayer.setPlayerTexture(avatars[avatarIndex].name)
+      game.network.readyToConnect()
+      dispatch(setLoggedIn(true))
+    }
+  }, [roomJoined, game])
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -208,29 +219,6 @@ export default function LoginDialog() {
               setName((e.target as HTMLInputElement).value)
             }}
           />
-          {!videoConnected && (
-            <Warning>
-              <Alert variant="outlined" severity="warning">
-                <AlertTitle>Warning</AlertTitle>
-                No webcam/mic connected - <strong>connect one for best experience!</strong>
-              </Alert>
-              <Button
-                variant="outlined"
-                color="secondary"
-                onClick={() => {
-                  game.network.webRTC?.getUserMedia()
-                }}
-              >
-                Connect Webcam
-              </Button>
-            </Warning>
-          )}
-
-          {videoConnected && (
-            <Warning>
-              <Alert variant="outlined">Webcam connected!</Alert>
-            </Warning>
-          )}
         </Right>
       </Content>
       <Bottom>

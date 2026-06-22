@@ -80,6 +80,13 @@ export default class Bootstrap extends Phaser.Scene {
     this.load.on('complete', () => {
       this.preloadComplete = true
       this.launchBackground(store.getState().user.backgroundMode)
+      
+      // Auto-connect to lobby and launch game
+      this.network.joinOrCreatePublic()
+        .then(() => {
+          this.launchGame()
+        })
+        .catch((error) => console.error(error))
     })
   }
 
