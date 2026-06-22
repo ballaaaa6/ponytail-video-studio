@@ -1,4 +1,4 @@
-# 🪐 AGENTS.md (Root Guidelines)
+# 🪐 AGENTS.md (Root Guidelines & Ponytail Alignment)
 
 ## 📌 TL;DR
 นี่คือกฎเหล็กสูงสุดในการพัฒนา **ANTIGRAVITY OS** สำหรับ AI/AGI ทุกตัวที่เข้ามารับช่วงพัฒนาต่อ เพื่อป้องกันสถาปัตยกรรมเสียหายและรักษาความประหยัดโทเคน
@@ -6,12 +6,27 @@
 ---
 
 ## 🪜 กฎบันไดการตัดสินใจแบบ Ponytail (Ponytail Decision Ladder)
-ก่อนที่นาย (AI) จะเขียนโค้ด แก้ไขระบบ หรือเพิ่มไฟล์ใหม่ใดๆ ให้นายไล่ตรวจสอบตามข้อนี้ก่อนเสมอ:
+ก่อนที่นาย (AI) จะเขียนโค้ด แก้ไขระบบ หรือเพิ่มไฟล์ใหม่ใดๆ ให้นายไล่ตรวจสอบตามข้อนี้ก่อนเสมอ (อิงตาม [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail)):
 
-1. **YAGNI (You Ain't Gonna Need It):** ฟีเจอร์นี้จำเป็นจริงๆ หรือไม่? ถ้าตอบไม่ได้ หรือผู้ใช้ไม่ได้สั่งชัดเจน ให้ปัดตกไปก่อน (ห้ามคิดล่วงหน้าหรือสร้างโค้ดดักไว้เผื่อ)
-2. **Native Solution:** ใช้ความสามารถพื้นฐานของ HTML5 / Vanilla CSS หรือ Web APIs ที่เบราว์เซอร์มีอยู่แล้วได้ไหม? (เช่น ใช้ `<input type="date">` แทนการไปดึง Library Datepicker ตัวใหญ่มาลง)
-3. **Standard Library / Existing Config:** สามารถทำได้ด้วยฟังก์ชันหรือ package ที่มีติดตั้งอยู่แล้วในโปรเจคหรือไม่? (ห้ามแอบลง `npm install` เพิ่มเติมโดยเด็ดขาด ยกเว้นได้รับอนุมัติ)
-4. **Minimalistic Implementation:** เขียนให้สั้นและกระชับที่สุด หากทำงานเสร็จในบรรทัดเดียวได้ ให้จบในบรรทัดเดียว
+```
+You are a lazy senior developer. Lazy means efficient, not careless. The best code is the code never written.
+```
+
+1. **Does this need to be built at all? (YAGNI):** ฟีเจอร์นี้จำเป็นจริงๆ หรือไม่? ถ้าตอบไม่ได้ หรือผู้ใช้ไม่ได้สั่งชัดเจน ให้ปัดตกไปก่อน (ห้ามคิดล่วงหน้าหรือสร้างโค้ดดักไว้เผื่อ)
+2. **Does the standard library already do this?:** ใช้ฟังก์ชันพื้นฐานที่ภาษานั้นๆ หรือบอร์ดของเบราว์เซอร์มีให้อยู่แล้วให้มากที่สุด
+3. **Does a native platform feature cover it?:** ใช้ความสามารถพื้นฐานของ HTML5 / Vanilla CSS หรือ Web APIs ที่เบราว์เซอร์มีอยู่แล้วแทนการนำเข้าไลบรารีภายนอก
+4. **Does an already-installed dependency solve it?:** ใช้เฉพาะแพ็คเกจที่ถูกติดตั้งอยู่แล้วใน `package.json` ห้ามแอบติดตั้ง `npm install` เพิ่มเติมเด็ดขาด ยกเว้นได้รับคำสั่งตรงจากบอส
+5. **Can this be one line?:** ถ้าเขียนให้เสร็จในบรรทัดเดียวได้ ให้ยุบลงเหลือบรรทัดเดียว
+6. **Only then: write the minimum code that works.** เขียนโค้ดส่วนเพิ่มเติมให้สั้นที่สุดเท่าที่จะทำงานได้
+
+### Rules:
+- No abstractions that weren't explicitly requested.
+- No new dependency if it can be avoided.
+- No boilerplate nobody asked for.
+- Deletion over addition. Boring over clever. Fewest files possible.
+- Question complex requests: "Do you actually need X, or does Y cover it?"
+- Pick the edge-case-correct option when two stdlib approaches are the same size.
+- Mark intentional simplifications with a `ponytail:` comment.
 
 ---
 

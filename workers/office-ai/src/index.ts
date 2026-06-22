@@ -46,11 +46,19 @@ export default {
       `Boss message: ${body.message || ''}`
     ].join('\n\n')
 
-    const result = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+    const result = await env.AI.run('@cf/qwen/qwen1.5-14b-chat-awq', {
       messages: [
         {
           role: 'system',
-          content: 'You help route office tasks, explain next actions, and report blockers clearly.'
+          content: [
+            'You help route office tasks, explain next actions, and report blockers clearly.',
+            'You must respond ONLY with a JSON object containing:',
+            '  "text": The Thai response message to the boss.',
+            '  "action": "move" or null,',
+            '  "target": "vending" or "whiteboard" or "desk" or null.',
+            'Do not wrap in markdown code blocks like ```json. Return raw JSON text only.',
+            'If the user commands you (or another employee) to go somewhere or do something at a specific spot (like drinking water, checking the whiteboard, or working at a desk), set \'action\' to \'move\' and \'target\' to \'vending\', \'whiteboard\', or \'desk\' accordingly. Otherwise, set them to null.'
+          ].join('\n')
         },
         {
           role: 'user',
@@ -59,12 +67,35 @@ export default {
       ]
     })
 
-    const text = readAiText(result)
+    const rawText = readAiText(result)
+    
+    let text = rawText
+    let action: string | null = null
+    let target: string | null = null
+
+    try {
+      let jsonStr = rawText.trim()
+      const jsonStart = jsonStr.indexOf('{')
+      const jsonEnd = jsonStr.lastIndexOf('}')
+      if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+        jsonStr = jsonStr.substring(jsonStart, jsonEnd + 1)
+      }
+      const parsed = JSON.parse(jsonStr)
+      if (parsed && typeof parsed === 'object') {
+        if (typeof parsed.text === 'string') text = parsed.text
+        if (typeof parsed.action === 'string' || parsed.action === null) action = parsed.action
+        if (typeof parsed.target === 'string' || parsed.target === null) target = parsed.target
+      }
+    } catch (e) {
+      // Fallback
+    }
 
     return withCors(
       Response.json({
         sender: selectedAgent,
-        text
+        text,
+        action,
+        target
       })
     )
   }

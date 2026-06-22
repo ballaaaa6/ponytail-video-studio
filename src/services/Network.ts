@@ -5,9 +5,11 @@ import store from '../stores'
 import { setSessionId, setPlayerNameMap, setLoggedIn } from '../stores/UserStore'
 import { setLobbyJoined, setRoomJoined } from '../stores/RoomStore'
 import { pushChatMessage, pushPlayerJoinedMessage } from '../stores/ChatStore'
+import { NpcId, NPCS_CONFIG, HOTSPOTS } from '../constants/positions'
+import { callWorkersAI } from './aiService'
 
 interface NPC {
-  id: 'chief' | 'videoLead' | 'ops' | 'analyst'
+  id: NpcId
   name: string
   sessionId: string
   x: number
@@ -37,65 +39,59 @@ export default class Network {
   private itemUserRemovedCallbacks: Array<{ callback: Function; context: any }> = []
   private chatMessageAddedCallbacks: Array<{ callback: Function; context: any }> = []
 
-  private npcs: Record<'chief' | 'videoLead' | 'ops' | 'analyst', NPC> = {
+  private npcs: Record<NpcId, NPC> = {
     chief: {
       id: 'chief',
-      name: 'Chief of Staff (เสนาธิการ)',
-      sessionId: 'chief-session-id',
-      x: 600,
-      y: 440,
-      anim: 'adam_idle_down',
+      name: NPCS_CONFIG.chief.name,
+      sessionId: NPCS_CONFIG.chief.sessionId,
+      x: NPCS_CONFIG.chief.initialX,
+      y: NPCS_CONFIG.chief.initialY,
+      anim: NPCS_CONFIG.chief.anim,
       state: 'idle',
     },
-    ops: {
-      id: 'ops',
-      name: 'Ash (Ops Lead)',
-      sessionId: 'ops-session-id',
-      x: 650,
-      y: 480,
-      anim: 'ash_idle_down',
+    creative: {
+      id: 'creative',
+      name: NPCS_CONFIG.creative.name,
+      sessionId: NPCS_CONFIG.creative.sessionId,
+      x: NPCS_CONFIG.creative.initialX,
+      y: NPCS_CONFIG.creative.initialY,
+      anim: NPCS_CONFIG.creative.anim,
       state: 'idle',
     },
-    videoLead: {
-      id: 'videoLead',
-      name: 'Lucy (Video Lead)',
-      sessionId: 'videoLead-session-id',
-      x: 705,
-      y: 440,
-      anim: 'lucy_idle_down',
+    rpa: {
+      id: 'rpa',
+      name: NPCS_CONFIG.rpa.name,
+      sessionId: NPCS_CONFIG.rpa.sessionId,
+      x: NPCS_CONFIG.rpa.initialX,
+      y: NPCS_CONFIG.rpa.initialY,
+      anim: NPCS_CONFIG.rpa.anim,
+      state: 'idle',
+    },
+    editor: {
+      id: 'editor',
+      name: NPCS_CONFIG.editor.name,
+      sessionId: NPCS_CONFIG.editor.sessionId,
+      x: NPCS_CONFIG.editor.initialX,
+      y: NPCS_CONFIG.editor.initialY,
+      anim: NPCS_CONFIG.editor.anim,
       state: 'idle',
     },
     analyst: {
       id: 'analyst',
-      name: 'Nancy (Analyst)',
-      sessionId: 'analyst-session-id',
-      x: 580,
-      y: 480,
-      anim: 'nancy_idle_down',
+      name: NPCS_CONFIG.analyst.name,
+      sessionId: NPCS_CONFIG.analyst.sessionId,
+      x: NPCS_CONFIG.analyst.initialX,
+      y: NPCS_CONFIG.analyst.initialY,
+      anim: NPCS_CONFIG.analyst.anim,
       state: 'idle',
     },
   }
 
-  // Adjacent Workstations at y: 416
-  private deskPositions = {
-    chief: { x: 480, y: 416, sitAnim: 'adam_sit_up', idleAnim: 'adam_idle_up' },
-    ops: { x: 512, y: 416, sitAnim: 'ash_sit_up', idleAnim: 'ash_idle_up' },
-    videoLead: { x: 544, y: 416, sitAnim: 'lucy_sit_up', idleAnim: 'lucy_idle_up' },
-    analyst: { x: 576, y: 416, sitAnim: 'nancy_sit_up', idleAnim: 'nancy_idle_up' },
-  }
-
-  // Walk-around hotspots
-  private hotspots = [
-    { x: 378, y: 209, name: 'ตู้หยอดเหรียญ' },
-    { x: 512, y: 544, name: 'กระดานไวท์บอร์ด' },
-    { x: 640, y: 128, name: 'ห้องนั่งเล่นพักผ่อน' },
-    { x: 320, y: 640, name: 'โซนเก้าอี้ประชุม' },
-  ]
-
-  private npcHistories: Record<'chief' | 'videoLead' | 'ops' | 'analyst', Array<{ role: 'user' | 'assistant'; content: string }>> = {
+  private npcHistories: Record<NpcId, Array<{ role: 'user' | 'assistant'; content: string }>> = {
     chief: [],
-    videoLead: [],
-    ops: [],
+    creative: [],
+    rpa: [],
+    editor: [],
     analyst: [],
   }
 
@@ -172,7 +168,7 @@ export default class Network {
   }
 
   private spawnNPCs() {
-    const npcIds: Array<'chief' | 'videoLead' | 'ops' | 'analyst'> = ['chief', 'videoLead', 'ops', 'analyst']
+    const npcIds: NpcId[] = ['chief', 'creative', 'rpa', 'editor', 'analyst']
 
     npcIds.forEach((id) => {
       const npc = this.npcs[id]
@@ -233,39 +229,41 @@ export default class Network {
   private handleChatCommands(content: string) {
     const text = content.toLowerCase()
     let isCommand = false
-    let targetedNpc: 'chief' | 'videoLead' | 'ops' | 'analyst' | null = null
+    let targetedNpc: NpcId | null = null
 
     // Determine targeted NPC
-    if (text.includes('chief') || text.includes('adam') || text.includes('หัวหน้าห้อง') || text.includes('เสนา')) {
+    if (text.includes('chief') || text.includes('adam') || text.includes('manager') || text.includes('ผู้จัดการ') || text.includes('เสนา')) {
       targetedNpc = 'chief'
-    } else if (text.includes('lucy') || text.includes('video') || text.includes('วิดีโอ')) {
-      targetedNpc = 'videoLead'
-    } else if (text.includes('ash') || text.includes('ops') || text.includes('ออพ')) {
-      targetedNpc = 'ops'
-    } else if (text.includes('nancy') || text.includes('analyst') || text.includes('วิเคราะห์')) {
+    } else if (text.includes('creative') || text.includes('lucy') || text.includes('ครีเอทีฟ') || text.includes('เขียนบท')) {
+      targetedNpc = 'creative'
+    } else if (text.includes('rpa') || text.includes('ash') || text.includes('ปฏิบัติการ') || text.includes('ออพ')) {
+      targetedNpc = 'rpa'
+    } else if (text.includes('editor') || text.includes('nancy') || text.includes('ตัดต่อ')) {
+      targetedNpc = 'editor'
+    } else if (text.includes('analyst') || text.includes('วิเคราะห์')) {
       targetedNpc = 'analyst'
     }
 
     if (targetedNpc) {
-      const spriteName = targetedNpc === 'chief' ? 'adam' : targetedNpc === 'videoLead' ? 'lucy' : targetedNpc === 'ops' ? 'ash' : 'nancy'
+      const spriteName = NPCS_CONFIG[targetedNpc].sprite
 
       if (text.includes('vending') || text.includes('drink') || text.includes('water') || text.includes('น้ำ') || text.includes('ตู้น้ำ')) {
         isCommand = true
         this.moveNPC(targetedNpc, 378, 209, `${spriteName}_run_up`, `${spriteName}_idle_up`, 'idle')
-        this.npcSay(targetedNpc, targetedNpc === 'chief' || targetedNpc === 'ops'
+        this.npcSay(targetedNpc, ['chief', 'rpa'].includes(targetedNpc)
           ? 'รับทราบครับบอส เดี๋ยวผมเดินไปตู้หยอดเหรียญหาน้ำดื่มสักครู่นะครับ'
           : 'รับทราบค่ะบอส! เดี๋ยวเดินไปตู้หยอดเหรียญหาน้ำดื่มสักครู่นะคะ')
       } else if (text.includes('whiteboard') || text.includes('board') || text.includes('กระดาน')) {
         isCommand = true
         this.moveNPC(targetedNpc, 512, 544, `${spriteName}_run_down`, `${spriteName}_sit_down`, 'idle')
-        this.npcSay(targetedNpc, targetedNpc === 'chief' || targetedNpc === 'ops'
+        this.npcSay(targetedNpc, ['chief', 'rpa'].includes(targetedNpc)
           ? 'กำลังเดินไปที่กระดานไวท์บอร์ดเพื่อเช็คงานเขียนบรีฟแล้วครับ'
           : 'กำลังเดินไปที่กระดานไวท์บอร์ดเพื่อบรีฟงานแล้วค่ะ')
       } else if (text.includes('desk') || text.includes('work') || text.includes('chair') || text.includes('โต๊ะ') || text.includes('ทำงาน')) {
         isCommand = true
-        const desk = this.deskPositions[targetedNpc]
+        const desk = NPCS_CONFIG[targetedNpc].desk
         this.moveNPC(targetedNpc, desk.x, desk.y, `${spriteName}_run_up`, desk.sitAnim, 'working')
-        this.npcSay(targetedNpc, targetedNpc === 'chief' || targetedNpc === 'ops'
+        this.npcSay(targetedNpc, ['chief', 'rpa'].includes(targetedNpc)
           ? 'รับทราบครับบอส กลับมานั่งสแตนบายทำงานที่โต๊ะเรียบร้อยแล้วครับ'
           : 'รับทราบค่ะบอส! กลับมานั่งสแตนบายทำงานที่โต๊ะเรียบร้อยแล้วค่ะ')
       }
@@ -277,14 +275,14 @@ export default class Network {
         this.pushToHistory(targetedNpc, 'user', content)
         this.callWorkersAI(targetedNpc, content)
       } else {
-        // General questions without naming an agent: let chief (Chief of Staff) reply!
+        // General questions without naming an agent: let chief (Manager) reply!
         this.pushToHistory('chief', 'user', content)
         this.callWorkersAI('chief', content)
       }
     }
   }
 
-  private pushToHistory(npcId: 'chief' | 'videoLead' | 'ops' | 'analyst', role: 'user' | 'assistant', content: string) {
+  private pushToHistory(npcId: NpcId, role: 'user' | 'assistant', content: string) {
     const history = this.npcHistories[npcId]
     history.push({ role, content })
     if (history.length > 20) {
@@ -292,43 +290,74 @@ export default class Network {
     }
   }
 
-  private async callWorkersAI(npcId: 'chief' | 'videoLead' | 'ops' | 'analyst', message: string) {
+  private async callWorkersAI(npcId: NpcId, message: string) {
     const npc = this.npcs[npcId]
 
     try {
-      const response = await fetch('https://voice-office-ai.ballaaaa6.workers.dev/api/office-chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const payload = {
+        message: message,
+        selectedAgent: {
+          name: npc.name,
         },
-        body: JSON.stringify({
-          message: message,
-          selectedAgent: {
-            name: npc.name,
-          },
-          agents: [
-            { name: this.npcs.chief.name, role: 'Chief of Staff', statusLabel: this.npcs.chief.state },
-            { name: this.npcs.videoLead.name, role: 'Video Lead', statusLabel: this.npcs.videoLead.state },
-            { name: this.npcs.ops.name, role: 'Ops Lead', statusLabel: this.npcs.ops.state },
-            { name: this.npcs.analyst.name, role: 'Analyst', statusLabel: this.npcs.analyst.state },
-          ],
-        }),
-      })
+        agents: Object.values(this.npcs).map((n) => ({
+          name: n.name,
+          role: n.id === 'chief' ? 'Manager' : n.id === 'creative' ? 'Creative' : n.id === 'rpa' ? 'RPA Worker' : n.id === 'editor' ? 'Video Editor' : 'Analytics Agent',
+          statusLabel: n.state,
+        })),
+      }
 
-      const data = await response.json()
-      if (data && data.text) {
-        this.npcSay(npcId, data.text)
+      const responseData = await callWorkersAI(payload)
+      let parsedData: any = null
+
+      if (typeof responseData === 'string') {
+        try {
+          parsedData = JSON.parse(responseData)
+        } catch (e) {
+          parsedData = { text: responseData }
+        }
+      } else if (responseData && typeof responseData === 'object') {
+        parsedData = responseData
+        if (typeof responseData.text === 'string' && responseData.text.trim().startsWith('{')) {
+          try {
+            const nested = JSON.parse(responseData.text)
+            if (nested && typeof nested === 'object') {
+              parsedData = { ...responseData, ...nested }
+            }
+          } catch (e) {
+            // Ignore, text was not JSON
+          }
+        }
+      }
+
+      const text = parsedData?.text || ''
+      const action = parsedData?.action || null
+      const target = parsedData?.target || null
+
+      if (text) {
+        this.npcSay(npcId, text)
+      }
+
+      if (action === 'move' && target) {
+        const spriteName = NPCS_CONFIG[npcId].sprite
+        if (target === 'vending') {
+          this.moveNPC(npcId, 378, 209, `${spriteName}_run_up`, `${spriteName}_idle_up`, 'idle')
+        } else if (target === 'whiteboard') {
+          this.moveNPC(npcId, 512, 544, `${spriteName}_run_down`, `${spriteName}_sit_down`, 'idle')
+        } else if (target === 'desk') {
+          const desk = NPCS_CONFIG[npcId].desk
+          this.moveNPC(npcId, desk.x, desk.y, `${spriteName}_run_up`, desk.sitAnim, 'working')
+        }
       }
     } catch (error) {
       console.error('Failed to communicate with Workers AI:', error)
-      this.npcSay(npcId, npcId === 'chief' || npcId === 'ops'
+      this.npcSay(npcId, ['chief', 'rpa'].includes(npcId)
         ? 'รับทราบครับบอส ตอนนี้ระบบประมวลผลมีปัญหา รบกวนลองอีกรอบนะครับ'
         : 'รับทราบค่ะบอส ตอนนี้ระบบประมวลผลมีปัญหา รบกวนลองอีกรอบนะคะ')
     }
   }
 
   private moveNPC(
-    npcId: 'chief' | 'videoLead' | 'ops' | 'analyst',
+    npcId: NpcId,
     x: number,
     y: number,
     runAnim: string,
@@ -357,7 +386,7 @@ export default class Network {
     }, duration)
   }
 
-  private npcSay(npcId: 'chief' | 'videoLead' | 'ops' | 'analyst', message: string) {
+  private npcSay(npcId: NpcId, message: string) {
     const npc = this.npcs[npcId]
     this.pushToHistory(npcId, 'assistant', message)
 
@@ -381,55 +410,28 @@ export default class Network {
 
     setTimeout(() => {
       this.npcSay(
-        'videoLead',
-        'บอสคุยกับพวกเรา 4 คน (Chief of Staff, Video Lead, Ops Lead, Analyst) และสั่งงานหรือให้เราเดินงานในออฟฟิศได้เลยนะคะ'
+        'creative',
+        'บอสคุยกับพวกเรา 5 คน (Manager, Creative, RPA Worker, Video Editor, Analytics Agent) และสั่งงานหรือให้เราเดินงานในออฟฟิศได้เลยนะคะ'
       )
     }, 3200)
 
     // 2. Initial movement: NPCs walk to their desks to start working
-    setTimeout(() => {
-      this.moveNPC(
-        'chief',
-        this.deskPositions.chief.x,
-        this.deskPositions.chief.y,
-        'adam_run_up',
-        this.deskPositions.chief.sitAnim,
-        'working'
-      )
-    }, 5000)
-
-    setTimeout(() => {
-      this.moveNPC(
-        'ops',
-        this.deskPositions.ops.x,
-        this.deskPositions.ops.y,
-        'ash_run_up',
-        this.deskPositions.ops.sitAnim,
-        'working'
-      )
-    }, 5800)
-
-    setTimeout(() => {
-      this.moveNPC(
-        'videoLead',
-        this.deskPositions.videoLead.x,
-        this.deskPositions.videoLead.y,
-        'lucy_run_up',
-        this.deskPositions.videoLead.sitAnim,
-        'working'
-      )
-    }, 6600)
-
-    setTimeout(() => {
-      this.moveNPC(
-        'analyst',
-        this.deskPositions.analyst.x,
-        this.deskPositions.analyst.y,
-        'nancy_run_up',
-        this.deskPositions.analyst.sitAnim,
-        'working'
-      )
-    }, 7400)
+    let delay = 5000
+    const npcIds: NpcId[] = ['chief', 'creative', 'rpa', 'editor', 'analyst']
+    npcIds.forEach((id) => {
+      const config = NPCS_CONFIG[id]
+      setTimeout(() => {
+        this.moveNPC(
+          id,
+          config.desk.x,
+          config.desk.y,
+          `${config.sprite}_run_up`,
+          config.desk.sitAnim,
+          'working'
+        )
+      }, delay)
+      delay += 800
+    })
 
     // 3. Autonomous stroll loop: If NPCs are idle, let them walk around randomly!
     setInterval(() => {
@@ -438,11 +440,11 @@ export default class Network {
   }
 
   private simulateAutonomousNPCs() {
-    const npcKeys: Array<'chief' | 'videoLead' | 'ops' | 'analyst'> = ['chief', 'videoLead', 'ops', 'analyst']
+    const npcKeys: NpcId[] = ['chief', 'creative', 'rpa', 'editor', 'analyst']
 
     npcKeys.forEach((key) => {
       const npc = this.npcs[key]
-      const spriteName = key === 'chief' ? 'adam' : key === 'videoLead' ? 'lucy' : key === 'ops' ? 'ash' : 'nancy'
+      const spriteName = NPCS_CONFIG[key].sprite
 
       // Only walk around randomly if they are currently IDLE (break time)
       if (npc.state === 'idle') {
@@ -450,19 +452,19 @@ export default class Network {
 
         // 40% chance to go back to work at their desk
         if (decision < 0.40) {
-          const desk = this.deskPositions[key]
-          this.moveNPC(key, desk.x, desk.y, `${spriteName}_run_up`, desk.sitAnim, 'working')
-          this.npcSay(key, key === 'chief' || key === 'ops'
+          const config = NPCS_CONFIG[key]
+          this.moveNPC(key, config.desk.x, config.desk.y, `${spriteName}_run_up`, config.desk.sitAnim, 'working')
+          this.npcSay(key, ['chief', 'rpa'].includes(key)
             ? 'พักผ่อนเสร็จแล้ว ขอตัวกลับไปนั่งลุยงานต่อที่โต๊ะทำงานนะครับ'
             : 'พักผ่อนเสร็จแล้ว ขอตัวกลับไปนั่งลุยงานต่อที่โต๊ะทำงานนะคะ')
         }
         // 30% chance to stroll to a random hotspot
         else if (decision < 0.70) {
-          const randomHotspot = this.hotspots[Math.floor(Math.random() * this.hotspots.length)]
+          const randomHotspot = HOTSPOTS[Math.floor(Math.random() * HOTSPOTS.length)]
           const directionAnim = randomHotspot.x > npc.x ? `${spriteName}_run_right` : `${spriteName}_run_left`
 
           this.moveNPC(key, randomHotspot.x, randomHotspot.y, directionAnim, `${spriteName}_idle_down`, 'idle')
-          this.npcSay(key, key === 'chief' || key === 'ops'
+          this.npcSay(key, ['chief', 'rpa'].includes(key)
             ? `ขอเดินไปสูดอากาศแถวๆ ${randomHotspot.name} แป๊บหนึ่งนะครับ`
             : `ขอเดินไปสูดอากาศแถวๆ ${randomHotspot.name} แป๊บหนึ่งนะคะ`)
         }
@@ -470,11 +472,11 @@ export default class Network {
       // If they are currently WORKING, there is a small 10% chance they take a break autonomously!
       else if (npc.state === 'working') {
         if (Math.random() < 0.10) {
-          const randomHotspot = this.hotspots[Math.floor(Math.random() * this.hotspots.length)]
+          const randomHotspot = HOTSPOTS[Math.floor(Math.random() * HOTSPOTS.length)]
           const directionAnim = randomHotspot.x > npc.x ? `${spriteName}_run_right` : `${spriteName}_run_left`
 
           this.moveNPC(key, randomHotspot.x, randomHotspot.y, directionAnim, `${spriteName}_idle_down`, 'idle')
-          this.npcSay(key, key === 'chief' || key === 'ops'
+          this.npcSay(key, ['chief', 'rpa'].includes(key)
             ? `ขออนุญาตเบรกสมอง แวะไปเดินเล่นแถว ${randomHotspot.name} สักประเดี๋ยวนะครับ`
             : `ขออนุญาตเบรกสมอง แวะไปเดินเล่นแถว ${randomHotspot.name} สักประเดี๋ยวนะคะ`)
         }
